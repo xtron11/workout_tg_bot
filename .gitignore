@@ -1,5 +1,5 @@
-# environment variables
 .env
-
-# python
-__pycache__
+bot.log
+__pycache__/
+venv/
+*.pyc
