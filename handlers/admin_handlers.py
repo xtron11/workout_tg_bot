@@ -2,6 +2,8 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from datetime import datetime
+
 from core import add_available_slot, delete_appointment_by_id, get_appointment_by_id, get_slots_and_appointments_by_day, get_all_days, delete_slot_by_id, get_all_users, get_users_for_notification, insert_user, delete_user
 from keyboards import get_admin_time_kb, get_admin_times_kb, get_admin_all_days_kb, get_admin_action_kb, get_admin_menu, get_users_kb
 from config import settings
@@ -23,7 +25,19 @@ def validate_date(text):
     if not match:
         return False
     day, month = int(match.group(1)), int(match.group(2))
-    return 1 <= day <= 31 and 1 <= month <= 12
+    if not (1 <= day <= 31 and 1 <= month <= 12):
+        return False
+    
+    # Проверяем что дата не в прошлом
+    current_year = datetime.now().year
+    try:
+        input_date = datetime.strptime(f"{text}.{current_year}", "%d.%m.%Y").date()
+        if input_date < datetime.now().date():
+            return False
+    except ValueError:
+        return False
+    
+    return True
 
 def validate_time(text):
     match = re.match(r'^(\d{2}):(\d{2})$', text)
@@ -76,8 +90,11 @@ async def admin_add_start(message: types.Message, state: FSMContext):
 async def admin_get_day(message: types.Message, state: FSMContext):
     # Получаем день от админа, проверяем формат и показываем выбор времени
     if not validate_date(message.text):
-        await message.answer("Введите дату в правильном формате (например: 20.03, 09.04)")
-        return  # остаёмся в том же состоянии, ждём правильный ввод
+        await message.answer(
+            "Введите корректную дату в формате 20.03\n"
+            "Дата не должна быть в прошлом!"
+        )
+        return
     
     await state.update_data(admin_day=message.text, selected_times=[])
     await message.answer(
